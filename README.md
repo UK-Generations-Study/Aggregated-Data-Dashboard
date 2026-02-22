@@ -3,7 +3,7 @@
 A browser-based dashboard for exploring **pre-aggregated, privacy-safe summary statistics** from the Breast Cancer Now Generations Study.
 No individual-level data is used or stored — all values are group-level summaries with small-cell suppression applied.
 
-> **Live dashboard:** https://uk-generations-study.github.io/Aggregated-Data-Dashboard/dashboard-aggregate.html
+> **Live dashboard:** https://uk-generations-study.github.io/Aggregated-Data-Dashboard/
 
 ---
 
@@ -27,7 +27,7 @@ It loads a single JSON file (`aggregated_data.json`) containing pre-computed sum
 
 Open the dashboard directly — no installation needed:
 
-> **https://uk-generations-study.github.io/Aggregated-Data-Dashboard/dashboard-aggregate.html**
+> **https://uk-generations-study.github.io/Aggregated-Data-Dashboard/**
 
 The aggregated data file is loaded automatically from the same repository.
 
@@ -36,7 +36,7 @@ The aggregated data file is loaded automatically from the same repository.
 If you need to update `aggregated_data.json` and preview changes locally:
 
 ```bash
-./start.sh          # opens browser at http://localhost:8080/dashboard-aggregate.html
+./start.sh          # opens browser at http://localhost:8080/
 ./start.sh 9090     # custom port
 ```
 
@@ -60,7 +60,7 @@ If you need to update `aggregated_data.json` and preview changes locally:
 ## Repository Contents
 
 ```
-├── dashboard-aggregate.html   ← Main dashboard (open this in a browser)
+├── index.html                 ← Main dashboard (open this in a browser)
 ├── aggregated_data.json       ← Pre-aggregated summary statistics (no individual records)
 ├── aggregate_data.py          ← Python script that generates aggregated_data.json
 ├── start.sh                   ← Local HTTP server launcher (for local preview)
@@ -107,4 +107,3 @@ Once regenerated, replace `aggregated_data.json` in the repository. The dashboar
 ---
 
 *Breast Cancer Now Generations Study — [thegenerationsstudy.co.uk](https://thegenerationsstudy.co.uk/)*
-
