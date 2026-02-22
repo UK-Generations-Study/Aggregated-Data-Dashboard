@@ -274,6 +274,8 @@
 
     /* Hamburger: hidden on desktop */
     #btn-sidebar-toggle { display: none; }
+    /* Explore hints: mobile one hidden on desktop */
+    .explore-hint-mobile { display: none; }
 
     @media (max-width: 900px) {
       .sidebar { width: 220px; }
@@ -596,7 +598,7 @@
       <div id="tab-explore" class="tab-panel">
         <div id="explore-prompt" style="text-align:center;padding:60px;color:var(--muted)">
           <span class="explore-hint-desktop">← Select a variable from the sidebar to explore its distribution.</span>
-          <span class="explore-hint-mobile" style="display:none">Tap ☰ to open the variable list, then select a variable.</span>
+          <span class="explore-hint-mobile">Tap ☰ to open the variable list, then select a variable.</span>
         </div>
         <div id="var-detail">
           <div class="card">
