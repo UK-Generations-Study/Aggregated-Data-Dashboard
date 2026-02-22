@@ -6,7 +6,7 @@
 
 PORT=${1:-8080}
 DIR="$(cd "$(dirname "$0")" && pwd)"
-URL="http://localhost:${PORT}/dashboard-aggregate.html"
+URL="http://localhost:${PORT}/"
 
 echo "Generations Study — Aggregated Data Dashboard"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
