@@ -274,8 +274,6 @@
 
     /* Hamburger: hidden on desktop */
     #btn-sidebar-toggle { display: none; }
-    /* Explore hints: mobile one hidden on desktop */
-    .explore-hint-mobile { display: none; }
 
     @media (max-width: 900px) {
       .sidebar { width: 220px; }
@@ -361,8 +359,6 @@
       .tab-panels { padding: 16px 14px; }
 
       /* Explore hint */
-      .explore-hint-desktop { display: none; }
-      .explore-hint-mobile  { display: inline; }
     }
 
     /* ── 480 px – Small phones ────────────────────────────────────────── */
@@ -597,8 +593,7 @@
       <!-- ── Explore ── -->
       <div id="tab-explore" class="tab-panel">
         <div id="explore-prompt" style="text-align:center;padding:60px;color:var(--muted)">
-          <span class="explore-hint-desktop">← Select a variable from the sidebar to explore its distribution.</span>
-          <span class="explore-hint-mobile">Tap ☰ to open the variable list, then select a variable.</span>
+          Tap ☰ to open the variable list, then select a variable to explore its distribution.
         </div>
         <div id="var-detail">
           <div class="card">
