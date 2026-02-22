@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Generations Study – Data Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot@4/build/index.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+    /* ── Reset ───────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Colour tokens – Generations Study brand (from PowerPoint template) */
+    :root {
+      --purple:      #6B58A0;   /* Primary brand purple                      */
+      --purple-dark: #4f3f7a;   /* Darker purple for hover states            */
+      --purple-l:    #E6E2F0;   /* Light lavender (brand light bg)           */
+      --purple-ll:   #f4f2f9;   /* Very light lavender (page background)     */
+      --lime:        #B9E05D;   /* Lime green – the 'g' icon colour          */
+      --lime-dark:   #8aab33;   /* Darker lime for hover                     */
+      --lime-l:      #eef7cc;   /* Very light lime tint                      */
+      --purple-mid:  #A599C7;   /* Mid purple for accents / icons            */
+      --dark:        #3a3358;   /* Near-black purple for headings            */
+      --text:        #505050;   /* Body text (from brand dark1)              */
+      --muted:       #7a788c;   /* Muted / secondary text                    */
+      --grey-bg:     #f4f2f9;   /* Page background – lavender tint           */
+      --border:      #ddd9ea;   /* Border colour                             */
+      --white:       #ffffff;
+      --warn:        #c05621;
+      --green:       #3d8b5c;
+      --danger:      #9b2335;
+      /* Aliases for backward-compat with template references */
+      --grey-dk:  #505050;
+      --grey-md:  #7a788c;
+      --navy:     var(--purple);
+      --pink:     var(--purple);
+      --pink-l:   var(--purple-l);
+      --pink-dark:var(--purple-dark);
+    }
+
+    body {
+      font-family: 'Nunito', 'Aptos', -apple-system,
+                   BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      font-size: 14px;
+      background: var(--grey-bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header – brand purple with white wordmark logo ──────────────── */
+    header {
+      background: var(--purple);
+      color: white;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      height: 72px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 12px rgba(107,88,160,0.3);
+    }
+    .logo-block { display: flex; align-items: center; gap: 14px; }
+    .logo-g {
+      height: 40px;
+      width: auto;
+      display: block;
+      /* lime green 'g' looks great on purple – keep natural colour */
+    }
+    .logo-wordmark {
+      height: 52px;
+      width: auto;
+      display: block;
+    }
+    .logo-divider {
+      width: 1px;
+      height: 28px;
+      background: rgba(255,255,255,0.3);
+    }
+    .logo-text p {
+      font-size: 16px;
+      color: rgba(255,255,255,0.85);
+      font-weight: 400;
+      letter-spacing: 0.2px;
+    }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .header-badge {
+      background: var(--lime);
+      color: #2d2d2d;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+    }
+    #cohort-badge {
+      background: rgba(255,255,255,0.15);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #cohort-badge .cnt { font-weight: 800; color: var(--lime); font-size: 15px; }
+
+    /* ── Layout ──────────────────────────────────────────────────────── */
+    .app-shell { display: flex; height: calc(100vh - 72px); overflow: hidden; }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────── */
+    .sidebar {
+      width: 268px;
+      min-width: 220px;
+      background: var(--white);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 14px 16px 10px;
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-header h3 {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--purple);
+      font-weight: 800;
+    }
+    #var-search {
+      width: 100%; margin-top: 8px; padding: 7px 10px;
+      border: 1px solid var(--border); border-radius: 6px;
+      font-size: 13px; outline: none;
+      font-family: inherit;
+      transition: border-color .15s;
+    }
+    #var-search:focus { border-color: var(--purple); box-shadow: 0 0 0 3px var(--purple-l); }
+    .group-filter {
+      display: flex; flex-wrap: wrap; gap: 4px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--grey-bg);
+    }
+    .gf-btn {
+      padding: 3px 9px; border-radius: 12px;
+      border: 1px solid var(--border);
+      background: white; font-size: 11px; font-weight: 600;
+      cursor: pointer; color: var(--text);
+      transition: all .15s; font-family: inherit;
+    }
+    .gf-btn.active { background: var(--purple); color: white; border-color: var(--purple); }
+    .gf-btn:hover:not(.active) { border-color: var(--purple); color: var(--purple); }
+    .var-list { flex: 1; overflow-y: auto; }
+    .var-item {
+      padding: 9px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+      transition: background .1s;
+    }
+    .var-item:hover { background: var(--purple-l); }
+    .var-item.active {
+      background: var(--purple-l);
+      border-left: 3px solid var(--purple);
+      padding-left: 13px;
+    }
+    .var-type-pill {
+      font-size: 9px; padding: 2px 6px; border-radius: 8px;
+      font-weight: 700; white-space: nowrap; flex-shrink: 0;
+      text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .type-numeric     { background: #e4e0f4; color: #4f3f7a; }
+    .type-integer     { background: #e4e0f4; color: #4f3f7a; }
+    .type-categorical { background: #eef7cc; color: #5a7a00; }
+    .type-binary      { background: #ddd9ea; color: #6B58A0; }
+    .var-name { font-size: 12px; font-weight: 700; color: var(--dark); flex: 1; }
+    .var-desc { font-size: 11px; color: var(--muted); overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── Main content ─────────────────────────────────────────────────── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* ── Nav tabs ────────────────────────────────────────────────────── */
+    .nav-tabs {
+      display: flex;
+      background: var(--white);
+      border-bottom: 2px solid var(--border);
+      padding: 0 24px;
+    }
+    .nav-tab {
+      padding: 13px 18px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      white-space: nowrap;
+      transition: all .15s;
+    }
+    .nav-tab:hover { color: var(--purple); }
+    .nav-tab.active {
+      color: var(--purple);
+      border-bottom-color: var(--purple);
+      font-weight: 800;
+    }
+
+    /* Tab panels */
+    .tab-panels { flex: 1; overflow-y: auto; padding: 22px 24px; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Drop zone ───────────────────────────────────────────────────── */
+    #load-wrapper {
+      max-width: 760px; margin: 60px auto; padding: 0 16px;
+    }
+    .dz-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+      margin-bottom: 14px;
+    }
+    .dz-panel {
+      border: 2px dashed var(--border); border-radius: 14px;
+      background: var(--white); padding: 36px 28px;
+      text-align: center; cursor: pointer; transition: all .2s;
+      box-shadow: 0 1px 6px rgba(107,88,160,0.05);
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+    .dz-panel:hover, .dz-panel.dragover {
+      border-color: var(--purple); background: var(--purple-l);
+    }
+    .dz-panel.loaded {
+      border-color: var(--lime-dark); border-style: solid;
+      background: var(--lime-l);
+    }
+    .dz-panel .dz-icon { font-size: 36px; }
+    .dz-panel h3 { font-size: 15px; font-weight: 800; color: var(--dark); margin: 0; }
+    .dz-panel p  { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 0; }
+    .dz-badge-opt {
+      font-size: 10px; font-weight: 700; background: var(--border);
+      color: var(--muted); padding: 2px 8px; border-radius: 10px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .dz-badge-ok {
+      font-size: 11px; font-weight: 700; background: var(--lime-l);
+      color: var(--lime-dark); padding: 3px 10px; border-radius: 10px;
+      border: 1px solid var(--lime-dark);
+    }
+    .dz-status { font-size: 12px; color: var(--lime-dark); font-weight: 700; }
+    .dz-note {
+      font-size: 11px; color: var(--muted); text-align: center;
+      padding-top: 10px; border-top: 1px solid var(--border); line-height: 1.6;
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────────────── */
+    .btn-primary {
+      background: var(--purple); color: white; border: none;
+      padding: 10px 26px; border-radius: 6px; font-size: 14px;
+      font-weight: 700; cursor: pointer; transition: background .15s;
+      font-family: inherit;
+    }
+    .btn-primary:hover { background: var(--purple-dark); }
+    .btn-secondary {
+      background: var(--white); color: var(--purple);
+      border: 1.5px solid var(--purple); padding: 9px 18px;
+      border-radius: 6px; font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: all .15s; font-family: inherit;
+    }
+    .btn-secondary:hover { background: var(--purple-l); }
+    #file-input { display: none; }
+
+    /* ── Cards ───────────────────────────────────────────────────────── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 22px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(107,88,160,0.06);
+    }
+    .card-title {
+      font-size: 14px; font-weight: 800; color: var(--dark);
+      margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+    }
+    .badge {
+      background: var(--purple); color: white; font-size: 11px;
+      padding: 2px 9px; border-radius: 12px; font-weight: 700;
+    }
+
+    /* ── Overview ────────────────────────────────────────────────────── */
+    .stat-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 14px; margin-bottom: 16px;
+    }
+    .stat-card {
+      background: var(--white); border-radius: 10px; padding: 18px 14px;
+      text-align: center; border: 1px solid var(--border);
+      box-shadow: 0 1px 4px rgba(107,88,160,0.06);
+    }
+    .stat-value { font-size: 28px; font-weight: 900; color: var(--purple); }
+    .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* ── Variable detail ─────────────────────────────────────────────── */
+    #var-detail { display: none; }
+    .var-meta { margin-bottom: 14px; }
+    .var-meta-row { display: flex; gap: 8px; margin-bottom: 5px; }
+    .meta-label {
+      font-size: 10px; font-weight: 800; color: var(--purple);
+      width: 110px; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.6px;
+      padding-top: 1px;
+    }
+    .meta-val { font-size: 13px; color: var(--text); }
+    .chart-area { position: relative; height: 280px; overflow: hidden; }
+    .chart-type-btns { display: flex; gap: 6px; margin-bottom: 12px; align-items: center; }
+    .btn-download-png {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 5px;
+      padding: 5px 12px; border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: white; font-size: 12px; font-weight: 600;
+      cursor: pointer; color: var(--muted); font-family: inherit;
+      transition: all .15s;
+    }
+    .btn-download-png:hover { border-color: var(--purple); color: var(--purple); background: var(--purple-l); }
+    .chart-btn {
+      padding: 5px 14px; border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: white; font-size: 12px; font-weight: 600;
+      cursor: pointer; color: var(--muted); font-family: inherit;
+      transition: all .15s;
+    }
+    .chart-btn.active {
+      background: var(--purple); color: white;
+      border-color: var(--purple);
+    }
+
+    /* ── Summary chips ───────────────────────────────────────────────── */
+    .stats-mini { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    .stats-mini-item {
+      background: var(--grey-bg); border-radius: 8px; padding: 10px 16px;
+      border: 1px solid var(--border);
+    }
+    .stats-mini-item .sv { font-size: 17px; font-weight: 800; color: var(--purple); }
+    .stats-mini-item .sl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+    /* ── Missingness ─────────────────────────────────────────────────── */
+    .miss-chart-area { position: relative; height: 480px; }
+
+    /* ── Stratified ──────────────────────────────────────────────────── */
+    .strat-controls { display: flex; gap: 14px; align-items: flex-end; margin-bottom: 16px; flex-wrap: wrap; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group label {
+      font-size: 10px; font-weight: 800; color: var(--purple);
+      text-transform: uppercase; letter-spacing: 0.7px;
+    }
+    .form-select {
+      padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 6px;
+      font-size: 13px; background: white; outline: none; min-width: 180px;
+      font-family: inherit; transition: border-color .15s;
+    }
+    .form-select:focus { border-color: var(--purple); }
+    #strat-charts-area { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    /* ── Cohort builder ──────────────────────────────────────────────── */
+    .filter-row {
+      display: flex; gap: 8px; align-items: center; margin-bottom: 10px;
+      padding: 10px 12px; background: var(--grey-bg); border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .filter-row select, .filter-row input {
+      padding: 6px 8px; border: 1px solid var(--border); border-radius: 5px;
+      font-size: 12px; background: white; font-family: inherit;
+    }
+    .filter-row select { flex: 2; }
+    .filter-row input  { flex: 1.5; }
+    .filter-op  { flex: 1; }
+    .filter-logic { flex: 0.8; }
+    .btn-remove {
+      background: #fed7d7; color: var(--danger); border: none;
+      border-radius: 5px; width: 28px; height: 28px; cursor: pointer;
+      font-weight: 700; font-size: 16px; flex-shrink: 0;
+    }
+    .attrition-flow { margin-top: 16px; }
+    .attrition-step {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px; margin-bottom: 4px;
+      border-radius: 8px; border-left: 4px solid;
+    }
+    .attrition-step.total    { border-color: var(--purple);     background: var(--purple-l); }
+    .attrition-step.included { border-color: var(--lime-dark);  background: var(--lime-l); }
+    .attrition-step.excluded { border-color: var(--warn);       background: #fff7ed; }
+    .att-n    { font-size: 22px; font-weight: 900; color: var(--purple); min-width: 60px; }
+    .att-label{ font-size: 12px; color: var(--muted); flex: 1; }
+    .att-pct  { font-size: 12px; font-weight: 700; }
+    .cohort-actions { display: flex; gap: 10px; margin-top: 16px; }
+
+    /* ── Descriptive table ───────────────────────────────────────────── */
+    .stats-legend {
+      display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center;
+      padding: 11px 16px; background: var(--purple-l); border-radius: 8px;
+      margin-bottom: 16px; border: 1px solid #c8c0e0; font-size: 12px;
+    }
+    .stats-legend-item { display: flex; align-items: center; gap: 7px; }
+    .stats-legend-dot  { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .stats-legend-sep  { color: #c8c0e0; font-size: 14px; }
+    .table1-controls { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .t1-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .t1-table th {
+      background: var(--purple); color: white; padding: 10px 13px;
+      text-align: left; font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.7px; font-weight: 700;
+    }
+    .t1-table th:first-child { border-radius: 0; }
+    .t1-table td { padding: 9px 13px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .t1-table tr:nth-child(even) td { background: var(--grey-bg); }
+    .t1-table tr:hover td { background: var(--purple-l); }
+    .t1-type { color: var(--muted); font-size: 11px; margin-top: 2px; }
+    .t1-missing { color: var(--warn); font-size: 12px; font-weight: 600; }
+
+    /* ── Enum legend ─────────────────────────────────────────────────── */
+    .enum-legend { margin-top: 12px; }
+    .enum-item { display: flex; gap: 10px; font-size: 12px; padding: 5px 0;
+      border-bottom: 1px solid var(--border); }
+    .enum-code { font-weight: 700; color: var(--purple); min-width: 32px; }
+
+    /* ── Toast ───────────────────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 28px; right: 28px;
+      background: var(--dark); color: white; padding: 12px 22px;
+      border-radius: 8px; font-size: 13px; z-index: 999;
+      display: none; box-shadow: 0 6px 20px rgba(107,88,160,0.3);
+      border-left: 4px solid var(--lime);
+    }
+
+    /* ── Scrollbar ───────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--grey-bg); }
+    ::-webkit-scrollbar-thumb { background: var(--purple-mid); border-radius: 3px; opacity: 0.4; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--purple); }
+
+    @media (max-width: 900px) {
+      .sidebar { width: 220px; }
+      #strat-charts-area { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────────────────────── -->
+<header>
+  <div class="logo-block">
+    <img class="logo-g" src="logo-g.png" alt="">
+    <img class="logo-wordmark" src="logo-white.png" alt="generations"
+         onerror="this.style.display='none'">
+    <div class="logo-divider"></div>
+    <div class="logo-text">
+      <p>Data Dashboard &nbsp;&middot;&nbsp; Synthetic Demo</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="cohort-badge" style="display:none">
+      <span>Cohort</span>
+      <span class="cnt" id="cohort-count">0</span>
+      <span style="color:var(--grey-md)">/ <span id="total-count">0</span></span>
+    </div>
+    <div class="header-badge">Synthetic Data</div>
+  </div>
+</header>
+
+<!-- ── App shell ──────────────────────────────────────────────────────── -->
+<div class="app-shell">
+
+  <!-- Sidebar: variable browser -->
+  <aside class="sidebar" id="sidebar" style="display:none">
+    <div class="sidebar-header">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <h3>Variables <span id="var-count-badge">(0)</span></h3>
+        <button title="Load or swap schema file" onclick="App.reloadSchema()"
+          style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:12px;
+                 border:1px solid var(--border);background:white;cursor:pointer;
+                 color:var(--muted);font-family:inherit;white-space:nowrap;flex-shrink:0">
+          &#128196; Schema
+        </button>
+        <input type="file" id="schema-input-2" accept=".json" style="display:none" />
+      </div>
+      <input type="text" id="var-search" placeholder="Search variables…" />
+    </div>
+    <div class="group-filter" id="group-filter">
+      <button class="gf-btn active" data-group="all">All</button>
+    </div>
+    <div class="var-list" id="var-list"></div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="main">
+
+    <!-- Nav tabs (hidden until data loaded) -->
+    <nav class="nav-tabs" id="nav-tabs" style="display:none">
+      <div class="nav-tab active" data-tab="overview">Overview</div>
+      <div class="nav-tab" data-tab="explore">Explore</div>
+      <div class="nav-tab" data-tab="missingness">Missingness</div>
+      <div class="nav-tab" data-tab="stratified">Stratified</div>
+      <div class="nav-tab" data-tab="cohort">Cohort Builder</div>
+      <div class="nav-tab" data-tab="table1">Descriptive</div>
+    </nav>
+
+    <div class="tab-panels" id="tab-panels">
+
+      <!-- ── Load screen ─────────────────────────────────────────────── -->
+      <div id="load-screen" class="tab-panel active">
+        <div id="load-wrapper">
+
+          <!-- Intro text -->
+          <div style="text-align:center;margin-bottom:32px;">
+            <h2 style="font-size:22px;font-weight:900;color:var(--purple);margin:0 0 10px">
+              Generations Study — Data Dashboard
+            </h2>
+            <p style="max-width:580px;margin:0 auto 12px;font-size:14px;line-height:1.7;color:var(--text)">
+              This tool allows researchers to explore, filter and summarise
+              Breast Cancer Now Generations Study data directly in the browser.
+              You can visualise variable distributions, compare groups, build
+              cohort definitions and export results.
+            </p>
+            <p style="max-width:580px;margin:0 auto 10px;font-size:13px;line-height:1.6;
+                      color:#1a6b3a;background:#edf7f1;border:1px solid #a3d9b8;
+                      border-radius:8px;padding:10px 16px;">
+              🔒 <strong>Privacy-preserving:</strong> all data is processed entirely within
+              your browser. Uploaded files never leave your device and are not transmitted
+              to any external server.
+            </p>
+            <p style="max-width:580px;margin:0 auto;font-size:13px;line-height:1.6;
+                      color:#b05000;background:#fff7ed;border:1px solid #f5c89a;
+                      border-radius:8px;padding:10px 16px;">
+              ⚠ This dashboard requires access to individual-level Generations Study data.
+            </p>
+          </div>
+
+          <div class="dz-row">
+            <!-- Data file panel -->
+            <div class="dz-panel" id="dz-data">
+              <div class="dz-icon">📊</div>
+              <h3>Data File</h3>
+              <p id="dz-data-hint">Drop your <strong>.json</strong> data array here,<br>or click to browse.</p>
+              <div id="dz-data-ok" style="display:none">
+                <div class="dz-badge-ok">&#10003; Loaded</div>
+                <div class="dz-status" id="dz-data-name"></div>
+              </div>
+              <button class="btn-primary" id="btn-data-select"
+                      onclick="event.stopPropagation();document.getElementById('file-input').click()">
+                Select Data File
+              </button>
+              <input type="file" id="file-input" accept=".json" style="display:none" />
+            </div>
+
+            <!-- Schema file panel -->
+            <div class="dz-panel" id="dz-schema">
+              <div class="dz-icon">📋</div>
+              <h3>Schema File</h3>
+              <p id="dz-schema-hint">Drop a <strong>JSON Schema</strong> here to load<br>variable labels, types &amp; groups.</p>
+              <div id="dz-schema-ok" style="display:none">
+                <div class="dz-badge-ok">&#10003; Loaded</div>
+                <div class="dz-status" id="dz-schema-name"></div>
+              </div>
+              <div id="dz-schema-auto" style="display:none">
+                <span class="dz-badge-opt">Auto-detected from data</span>
+              </div>
+              <button class="btn-secondary" id="btn-schema-select"
+                      onclick="event.stopPropagation();document.getElementById('schema-input').click()">
+                Select Schema File
+              </button>
+              <input type="file" id="schema-input" accept=".json" style="display:none" />
+            </div>
+          </div>
+          <!-- Continue button — appears once data is loaded -->
+          <div id="dz-continue" style="display:none;text-align:center;margin-top:8px">
+            <button class="btn-primary" style="padding:12px 36px;font-size:15px"
+                    onclick="App.continueToApp()">
+              Continue to Dashboard &rarr;
+            </button>
+          </div>
+          <div class="dz-note">
+            All processing occurs locally in your browser. No data is transmitted externally. &#128274;
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Overview ───────────────────────────────────────────────── -->
+      <div id="tab-overview" class="tab-panel">
+        <div class="card">
+          <div class="card-title">Dataset Summary</div>
+          <div class="stat-grid" id="overview-stats"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Variable Groups</div>
+          <div id="group-summary"></div>
+        </div>
+      </div>
+
+      <!-- ── Explore ─────────────────────────────────────────────────── -->
+      <div id="tab-explore" class="tab-panel">
+        <div id="explore-prompt" style="text-align:center;padding:60px;color:var(--muted)">
+          ← Select a variable from the sidebar to explore its distribution.
+        </div>
+        <div id="var-detail">
+          <div class="card">
+            <div class="card-title" id="detail-title">Variable</div>
+            <div class="var-meta" id="detail-meta"></div>
+            <div class="stats-mini" id="detail-stats"></div>
+            <div class="chart-type-btns" id="chart-type-btns"></div>
+            <div class="chart-area"><canvas id="main-chart"></canvas></div>
+          </div>
+          <div class="card" id="enum-card" style="display:none">
+            <div class="card-title">Code Reference</div>
+            <div class="enum-legend" id="enum-legend"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Missingness ─────────────────────────────────────────────── -->
+      <div id="tab-missingness" class="tab-panel">
+        <div class="card">
+          <div class="card-title">Missingness by Variable
+            <span class="badge" id="miss-cohort-label">Full dataset</span>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+            Percentage of records with null values (999/9999 sentinel values shown separately).
+          </p>
+          <div class="miss-chart-area"><canvas id="miss-chart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- ── Stratified ──────────────────────────────────────────────── -->
+      <div id="tab-stratified" class="tab-panel">
+        <div class="card">
+          <div class="card-title">Stratified Comparison</div>
+          <div class="strat-controls">
+            <div class="form-group">
+              <label>Stratify by (group variable)</label>
+              <select class="form-select" id="strat-by"></select>
+            </div>
+            <div class="form-group">
+              <label>Target variable</label>
+              <select class="form-select" id="strat-target"></select>
+            </div>
+            <button class="btn-primary" onclick="App.renderStratified()">Compare</button>
+          </div>
+          <div id="strat-charts-area"></div>
+        </div>
+      </div>
+
+      <!-- ── Cohort Builder ──────────────────────────────────────────── -->
+      <div id="tab-cohort" class="tab-panel">
+        <div style="display:grid;grid-template-columns:1fr 380px;gap:16px">
+          <div>
+            <div class="card">
+              <div class="card-title">Filter Criteria</div>
+              <div id="filter-rows"></div>
+              <button class="btn-secondary" onclick="App.addFilter()" style="margin-top:8px">
+                + Add Filter
+              </button>
+            </div>
+            <div class="card">
+              <div class="card-title">Attrition Flow</div>
+              <div class="attrition-flow" id="attrition-flow"></div>
+              <div class="cohort-actions">
+                <button class="btn-primary" onclick="App.exportCohort()">Export Cohort JSON</button>
+                <button class="btn-secondary" onclick="App.exportAttritionPNG()">↓ Export PNG</button>
+                <button class="btn-secondary" onclick="App.clearFilters()">Clear All</button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="card">
+              <div class="card-title">Live Preview
+                <span class="badge" id="cohort-preview-n">0</span>
+              </div>
+              <div id="cohort-preview-stats"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Descriptive ──────────────────────────────────────────────── -->
+      <div id="tab-table1" class="tab-panel">
+        <div class="card">
+          <div class="card-title">Descriptive Statistics
+            <span class="badge" id="t1-n-badge">n=0</span>
+          </div>
+
+          <!-- Statistics key -->
+          <div class="stats-legend">
+            <span class="stats-legend-item">
+              <span class="stats-legend-dot" style="background:var(--navy)"></span>
+              <strong>Continuous (numeric / integer):</strong> mean (SD)
+            </span>
+            <span class="stats-legend-sep">·</span>
+            <span class="stats-legend-item">
+              <span class="stats-legend-dot" style="background:var(--pink)"></span>
+              <strong>Categorical / binary:</strong> n (%) for top categories
+            </span>
+            <span class="stats-legend-sep">·</span>
+            <span class="stats-legend-item">
+              <span class="stats-legend-dot" style="background:var(--warn)"></span>
+              <strong>Null:</strong> genuinely missing / unknown
+            </span>
+            <span class="stats-legend-sep">·</span>
+            <span class="stats-legend-item">
+              <span class="stats-legend-dot" style="background:#c0a000"></span>
+              <strong>NA sentinel (999/9999):</strong> not applicable by design
+            </span>
+          </div>
+
+          <div class="table1-controls">
+            <div class="form-group">
+              <label>Stratify by</label>
+              <select class="form-select" id="t1-strat-by">
+                <option value="">None (whole cohort)</option>
+              </select>
+            </div>
+            <button class="btn-primary" onclick="App.renderTable1()">Generate</button>
+            <button class="btn-secondary" onclick="App.exportTable1CSV()">Export CSV</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="t1-table" id="t1-table">
+              <thead>
+                <tr>
+                  <th>Variable</th>
+                  <th>Type</th>
+                  <th id="t1-col-all">Whole Cohort</th>
+                  <th style="display:none" id="t1-col-s1">—</th>
+                  <th style="display:none" id="t1-col-s2">—</th>
+                  <th>Null (%)</th>
+                  <th>NA Sentinel (%)</th>
+                </tr>
+              </thead>
+              <tbody id="t1-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /tab-panels -->
+  </div><!-- /main -->
+</div><!-- /app-shell -->
+
+<div id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>

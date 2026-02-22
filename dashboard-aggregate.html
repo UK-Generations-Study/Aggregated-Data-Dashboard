@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Generations Study – Aggregated Data Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot@4/build/index.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --purple:      #6B58A0;
+      --purple-dark: #4f3f7a;
+      --purple-l:    #E6E2F0;
+      --purple-ll:   #f4f2f9;
+      --lime:        #B9E05D;
+      --lime-dark:   #8aab33;
+      --lime-l:      #eef7cc;
+      --purple-mid:  #A599C7;
+      --dark:        #3a3358;
+      --text:        #505050;
+      --muted:       #7a788c;
+      --grey-bg:     #f4f2f9;
+      --border:      #ddd9ea;
+      --white:       #ffffff;
+      --warn:        #c05621;
+      --green:       #3d8b5c;
+      --danger:      #9b2335;
+      --navy:        var(--purple);
+    }
+
+    body {
+      font-family: 'Nunito', 'Aptos', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      font-size: 14px;
+      background: var(--grey-bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    header {
+      background: var(--purple);
+      color: white;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      height: 72px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 12px rgba(107,88,160,0.3);
+    }
+    .logo-block { display: flex; align-items: center; gap: 14px; }
+    .logo-g     { height: 40px; width: auto; display: block; }
+    .logo-wordmark { height: 52px; width: auto; display: block; }
+    .logo-divider  { width: 1px; height: 28px; background: rgba(255,255,255,0.3); }
+    .logo-text p   { font-size: 16px; color: rgba(255,255,255,0.85); font-weight: 400; letter-spacing: 0.2px; }
+    .header-right  { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .header-badge  {
+      background: var(--lime); color: #2d2d2d;
+      padding: 4px 12px; border-radius: 20px;
+      font-size: 10px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase;
+    }
+    .header-badge.agg { background: #4aab7e; color: white; }
+    #cohort-badge {
+      background: rgba(255,255,255,0.15); color: white;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 500;
+      display: flex; align-items: center; gap: 6px;
+    }
+    #cohort-badge .cnt { font-weight: 800; color: var(--lime); font-size: 15px; }
+
+    .app-shell { display: flex; height: calc(100vh - 72px); overflow: hidden; }
+
+    .sidebar {
+      width: 268px; min-width: 220px;
+      background: var(--white); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 14px 16px 10px;
+      background: var(--white); border-bottom: 1px solid var(--border);
+    }
+    .sidebar-header h3 {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--purple); font-weight: 800;
+    }
+    #var-search {
+      width: 100%; margin-top: 8px; padding: 7px 10px;
+      border: 1px solid var(--border); border-radius: 6px;
+      font-size: 13px; outline: none; font-family: inherit; transition: border-color .15s;
+    }
+    #var-search:focus { border-color: var(--purple); box-shadow: 0 0 0 3px var(--purple-l); }
+    .group-filter {
+      display: flex; flex-wrap: wrap; gap: 4px;
+      padding: 8px 12px; border-bottom: 1px solid var(--border);
+      background: var(--grey-bg);
+    }
+    .gf-btn {
+      padding: 3px 9px; border-radius: 12px;
+      border: 1px solid var(--border);
+      background: white; font-size: 11px; font-weight: 600;
+      cursor: pointer; color: var(--text); transition: all .15s; font-family: inherit;
+    }
+    .gf-btn.active { background: var(--purple); color: white; border-color: var(--purple); }
+    .gf-btn:hover:not(.active) { border-color: var(--purple); color: var(--purple); }
+    .var-list { flex: 1; overflow-y: auto; }
+    .var-item {
+      padding: 9px 16px; cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px; transition: background .1s;
+    }
+    .var-item:hover { background: var(--purple-l); }
+    .var-item.active { background: var(--purple-l); border-left: 3px solid var(--purple); padding-left: 13px; }
+    .var-type-pill {
+      font-size: 9px; padding: 2px 6px; border-radius: 8px;
+      font-weight: 700; white-space: nowrap; flex-shrink: 0;
+      text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .type-numeric     { background: #e4e0f4; color: #4f3f7a; }
+    .type-integer     { background: #e4e0f4; color: #4f3f7a; }
+    .type-categorical { background: #eef7cc; color: #5a7a00; }
+    .type-binary      { background: #ddd9ea; color: #6B58A0; }
+    .var-name { font-size: 12px; font-weight: 700; color: var(--dark); flex: 1; }
+    .var-desc { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .nav-tabs {
+      display: flex; background: var(--white);
+      border-bottom: 2px solid var(--border); padding: 0 24px;
+    }
+    .nav-tab {
+      padding: 13px 18px; cursor: pointer; font-size: 13px; font-weight: 600;
+      color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px;
+      white-space: nowrap; transition: all .15s;
+    }
+    .nav-tab:hover { color: var(--purple); }
+    .nav-tab.active { color: var(--purple); border-bottom-color: var(--purple); font-weight: 800; }
+
+    .tab-panels { flex: 1; overflow-y: auto; padding: 22px 24px; }
+    .tab-panel  { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Load screen */
+    #load-wrapper { max-width: 680px; margin: 60px auto; padding: 0 16px; }
+    .dz-panel {
+      border: 2px dashed var(--border); border-radius: 14px;
+      background: var(--white); padding: 40px 32px;
+      text-align: center; cursor: pointer; transition: all .2s;
+      box-shadow: 0 1px 6px rgba(107,88,160,0.05);
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+    .dz-panel:hover, .dz-panel.dragover { border-color: var(--purple); background: var(--purple-l); }
+    .dz-panel.loaded { border-color: var(--lime-dark); border-style: solid; background: var(--lime-l); }
+    .dz-panel .dz-icon { font-size: 40px; }
+    .dz-panel h3 { font-size: 16px; font-weight: 800; color: var(--dark); margin: 0; }
+    .dz-panel p  { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 0; }
+    .dz-badge-ok {
+      font-size: 11px; font-weight: 700; background: var(--lime-l);
+      color: var(--lime-dark); padding: 3px 10px; border-radius: 10px;
+      border: 1px solid var(--lime-dark);
+    }
+    .dz-status { font-size: 12px; color: var(--lime-dark); font-weight: 700; }
+    .dz-note { font-size: 11px; color: var(--muted); text-align: center; padding-top: 10px;
+               border-top: 1px solid var(--border); line-height: 1.6; margin-top: 16px; }
+
+    .btn-primary {
+      background: var(--purple); color: white; border: none;
+      padding: 10px 26px; border-radius: 6px; font-size: 14px;
+      font-weight: 700; cursor: pointer; transition: background .15s; font-family: inherit;
+    }
+    .btn-primary:hover { background: var(--purple-dark); }
+    .btn-secondary {
+      background: var(--white); color: var(--purple);
+      border: 1.5px solid var(--purple); padding: 9px 18px;
+      border-radius: 6px; font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: all .15s; font-family: inherit;
+    }
+    .btn-secondary:hover { background: var(--purple-l); }
+
+    .card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px 22px; margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(107,88,160,0.06);
+    }
+    .card-title {
+      font-size: 14px; font-weight: 800; color: var(--dark);
+      margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+    }
+    .badge {
+      background: var(--purple); color: white; font-size: 11px;
+      padding: 2px 9px; border-radius: 12px; font-weight: 700;
+    }
+
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; margin-bottom: 16px; }
+    .stat-card {
+      background: var(--white); border-radius: 10px; padding: 18px 14px;
+      text-align: center; border: 1px solid var(--border);
+      box-shadow: 0 1px 4px rgba(107,88,160,0.06);
+    }
+    .stat-value { font-size: 28px; font-weight: 900; color: var(--purple); }
+    .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    #var-detail { display: none; }
+    .var-meta-row { display: flex; gap: 8px; margin-bottom: 5px; }
+    .meta-label { font-size: 10px; font-weight: 800; color: var(--purple); width: 110px; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.6px; padding-top: 1px; }
+    .meta-val { font-size: 13px; color: var(--text); }
+    .chart-area { position: relative; height: 280px; overflow: hidden; }
+    .chart-type-btns { display: flex; gap: 6px; margin-bottom: 12px; align-items: center; flex-wrap: wrap; }
+    .chart-btn {
+      padding: 5px 14px; border-radius: 20px; border: 1.5px solid var(--border);
+      background: white; font-size: 12px; font-weight: 600;
+      cursor: pointer; color: var(--muted); font-family: inherit; transition: all .15s;
+    }
+    .chart-btn.active { background: var(--purple); color: white; border-color: var(--purple); }
+
+    .stats-mini { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    .stats-mini-item { background: var(--grey-bg); border-radius: 8px; padding: 10px 16px; border: 1px solid var(--border); }
+    .stats-mini-item .sv { font-size: 17px; font-weight: 800; color: var(--purple); }
+    .stats-mini-item .sl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+    .form-select {
+      padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 6px;
+      font-size: 13px; background: white; outline: none; font-family: inherit; transition: border-color .15s;
+    }
+    .form-select:focus { border-color: var(--purple); }
+
+    .miss-chart-area { position: relative; height: 480px; }
+
+    .strat-controls { display: flex; gap: 14px; align-items: flex-end; margin-bottom: 16px; flex-wrap: wrap; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group label { font-size: 10px; font-weight: 800; color: var(--purple); text-transform: uppercase; letter-spacing: 0.7px; }
+    #strat-charts-area { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .enum-legend { margin-top: 12px; }
+    .enum-item { display: flex; gap: 10px; font-size: 12px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+    .enum-code { font-weight: 700; color: var(--purple); min-width: 32px; }
+
+    .stats-legend {
+      display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center;
+      padding: 11px 16px; background: var(--purple-l); border-radius: 8px;
+      margin-bottom: 16px; border: 1px solid #c8c0e0; font-size: 12px;
+    }
+    .stats-legend-item { display: flex; align-items: center; gap: 7px; }
+    .stats-legend-dot  { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .stats-legend-sep  { color: #c8c0e0; font-size: 14px; }
+    .table1-controls { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .t1-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .t1-table th { background: var(--purple); color: white; padding: 10px 13px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 700; }
+    .t1-table td { padding: 9px 13px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .t1-table tr:nth-child(even) td { background: var(--grey-bg); }
+    .t1-table tr:hover td { background: var(--purple-l); }
+    .t1-type    { color: var(--muted); font-size: 11px; margin-top: 2px; }
+    .t1-missing { color: var(--warn); font-size: 12px; font-weight: 600; }
+
+    #toast {
+      position: fixed; bottom: 28px; right: 28px;
+      background: var(--dark); color: white; padding: 12px 22px;
+      border-radius: 8px; font-size: 13px; z-index: 999;
+      display: none; box-shadow: 0 6px 20px rgba(107,88,160,0.3);
+      border-left: 4px solid var(--lime);
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--grey-bg); }
+    ::-webkit-scrollbar-thumb { background: var(--purple-mid); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--purple); }
+
+    @media (max-width: 900px) {
+      .sidebar { width: 220px; }
+      #strat-charts-area { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-block">
+    <img class="logo-g" src="logo-g.png" alt="">
+    <img class="logo-wordmark" src="logo-white.png" alt="generations" onerror="this.style.display='none'">
+    <div class="logo-divider"></div>
+    <div class="logo-text">
+      <p>Aggregated Data Dashboard</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="cohort-badge" style="display:none">
+      <span>Participants</span>
+      <span class="cnt" id="total-n-badge">0</span>
+    </div>
+    <button id="btn-refresh" onclick="Agg.refreshData()" style="display:none;
+      background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.35);
+      padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;
+      cursor:pointer;font-family:inherit;transition:background .15s"
+      onmouseover="this.style.background='rgba(255,255,255,0.25)'"
+      onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+      ↺ Refresh Data
+    </button>
+    <div class="header-badge agg">Aggregated · Privacy Safe</div>
+  </div>
+</header>
+
+<div class="app-shell">
+
+  <aside class="sidebar" id="sidebar" style="display:none">
+    <div class="sidebar-header">
+      <h3>Variables <span id="var-count-badge">(0)</span></h3>
+      <input type="text" id="var-search" placeholder="Search variables…" />
+    </div>
+    <div class="group-filter" id="group-filter">
+      <button class="gf-btn active" data-group="all">All</button>
+    </div>
+    <div class="var-list" id="var-list"></div>
+  </aside>
+
+  <div class="main">
+    <nav class="nav-tabs" id="nav-tabs" style="display:none">
+      <div class="nav-tab active" data-tab="intro">Introduction</div>
+      <div class="nav-tab" data-tab="overview">Overview</div>
+      <div class="nav-tab" data-tab="explore">Explore</div>
+      <div class="nav-tab" data-tab="missingness">Missingness</div>
+      <div class="nav-tab" data-tab="stratified">Stratified</div>
+      <div class="nav-tab" data-tab="table1">Descriptive</div>
+    </nav>
+
+    <div class="tab-panels" id="tab-panels">
+
+      <!-- ── Load screen ── -->
+      <div id="load-screen" class="tab-panel active">
+        <div id="load-wrapper">
+
+          <!-- Auto-fetch status (shown while loading or on error) -->
+          <div id="fetch-status" style="text-align:center;padding:60px 16px">
+            <div id="fetch-spinner" style="font-size:32px;margin-bottom:16px">⏳</div>
+            <p id="fetch-msg" style="font-size:14px;color:var(--muted)">Loading aggregated_data.json…</p>
+          </div>
+
+          <!-- Fallback drop zone (shown only if auto-fetch fails) -->
+          <div id="fallback-dz" style="display:none">
+            <div style="text-align:center;margin-bottom:24px;">
+              <p style="max-width:560px;margin:0 auto 12px;font-size:13px;line-height:1.6;
+                        color:#b05000;background:#fff7ed;border:1px solid #f5c89a;
+                        border-radius:8px;padding:10px 16px;">
+                ⚠ Could not auto-load <code>aggregated_data.json</code>.<br>
+                For auto-loading, open the dashboard via <code>start.sh</code> instead of directly.<br>
+                Or manually select the file below.
+              </p>
+            </div>
+            <div class="dz-panel" id="dz-agg">
+              <div class="dz-icon">📦</div>
+              <h3>Aggregated Data File</h3>
+              <p id="dz-agg-hint">Drop your <strong>aggregated_data.json</strong> here,<br>or click to browse.</p>
+              <div id="dz-agg-ok" style="display:none">
+                <div class="dz-badge-ok">&#10003; Loaded</div>
+                <div class="dz-status" id="dz-agg-name"></div>
+              </div>
+              <button class="btn-primary" id="btn-agg-select"
+                      onclick="event.stopPropagation();document.getElementById('agg-input').click()">
+                Select File
+              </button>
+              <input type="file" id="agg-input" accept=".json" style="display:none" />
+            </div>
+            <div class="dz-note">
+              Generate <code>aggregated_data.json</code> from individual data using:<br>
+              <code style="background:var(--grey-bg);padding:2px 6px;border-radius:4px">python3 aggregate_data.py</code>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Introduction ── -->
+      <div id="tab-intro" class="tab-panel">
+        <div style="max-width:780px;margin:0 auto">
+
+          <!-- Title block -->
+          <div class="card" style="background:var(--purple);border-color:var(--purple);color:white;padding:32px 32px 28px">
+            <div style="display:flex;align-items:center;gap:18px;margin-bottom:18px">
+              <img src="logo-g.png" style="height:52px;width:auto" alt="">
+              <div>
+                <h1 style="font-size:22px;font-weight:900;margin:0 0 4px;color:white">
+                  Generations Study
+                </h1>
+                <p style="font-size:15px;color:rgba(255,255,255,0.85);margin:0;font-weight:400">
+                  Aggregated Data Dashboard
+                </p>
+              </div>
+            </div>
+            <p style="font-size:14px;line-height:1.75;color:rgba(255,255,255,0.9);margin:0">
+              This dashboard provides an interactive summary of
+              <a href="https://thegenerationsstudy.co.uk/" target="_blank"
+                 style="color:var(--lime);font-weight:700;text-decoration:none"
+                 onmouseover="this.style.textDecoration='underline'"
+                 onmouseout="this.style.textDecoration='none'">
+                Breast Cancer Now Generations Study</a> data.
+              It is designed for researchers and study team members to explore variable distributions,
+              assess data quality, and compare participant characteristics across groups.
+            </p>
+          </div>
+
+          <!-- Privacy note -->
+          <div class="card" style="border-left:4px solid var(--lime-dark);background:#edf7f1;border-color:#a3d9b8">
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <span style="font-size:22px;line-height:1">🔒</span>
+              <div>
+                <div style="font-size:13px;font-weight:800;color:#1a6b3a;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Privacy-Preserving</div>
+                <p style="font-size:13px;line-height:1.7;color:#1a6b3a;margin:0">
+                  This dashboard loads <strong>aggregated summary statistics only</strong> — no individual-level
+                  participant records are ever stored, transmitted or displayed.
+                  All figures shown are pre-computed counts, means, standard deviations, medians and
+                  frequency tables. Any cell with fewer than <strong id="intro-mincell">5</strong> participants
+                  has been suppressed to protect participant privacy.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Data info -->
+          <div class="card">
+            <div class="card-title">About This Dataset</div>
+            <div id="intro-meta" style="display:grid;grid-template-columns:1fr 1fr;gap:10px 24px">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Tab guide -->
+          <div class="card">
+            <div class="card-title">What Each Tab Shows</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+
+              <div style="display:flex;gap:12px;padding:12px;background:var(--grey-bg);border-radius:8px;border:1px solid var(--border)">
+                <span style="font-size:20px;line-height:1">📊</span>
+                <div>
+                  <div style="font-weight:800;color:var(--dark);font-size:13px;margin-bottom:3px">Overview</div>
+                  <div style="font-size:12px;color:var(--muted);line-height:1.5">Dataset-level summary: participant count, number of variables, overall completeness and variable group breakdown.</div>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:12px;padding:12px;background:var(--grey-bg);border-radius:8px;border:1px solid var(--border)">
+                <span style="font-size:20px;line-height:1">🔍</span>
+                <div>
+                  <div style="font-weight:800;color:var(--dark);font-size:13px;margin-bottom:3px">Explore</div>
+                  <div style="font-size:12px;color:var(--muted);line-height:1.5">Select any variable from the sidebar to view its distribution (histogram, box plot or bar chart) and summary statistics.</div>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:12px;padding:12px;background:var(--grey-bg);border-radius:8px;border:1px solid var(--border)">
+                <span style="font-size:20px;line-height:1">❓</span>
+                <div>
+                  <div style="font-weight:800;color:var(--dark);font-size:13px;margin-bottom:3px">Missingness</div>
+                  <div style="font-size:12px;color:var(--muted);line-height:1.5">Bar chart showing the percentage of missing (null) and not-applicable sentinel values for every variable.</div>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:12px;padding:12px;background:var(--grey-bg);border-radius:8px;border:1px solid var(--border)">
+                <span style="font-size:20px;line-height:1">⚖️</span>
+                <div>
+                  <div style="font-weight:800;color:var(--dark);font-size:13px;margin-bottom:3px">Stratified</div>
+                  <div style="font-size:12px;color:var(--muted);line-height:1.5">Compare the distribution of any variable across subgroups defined by a categorical variable (e.g. menopausal status, smoking status).</div>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:12px;padding:12px;background:var(--grey-bg);border-radius:8px;border:1px solid var(--border)">
+                <span style="font-size:20px;line-height:1">📋</span>
+                <div>
+                  <div style="font-weight:800;color:var(--dark);font-size:13px;margin-bottom:3px">Descriptive</div>
+                  <div style="font-size:12px;color:var(--muted);line-height:1.5">Table 1–style descriptive statistics for all variables, with optional stratification. Exportable as CSV.</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Overview ── -->
+      <div id="tab-overview" class="tab-panel">
+        <div class="card">
+          <div class="card-title">Dataset Summary</div>
+          <div class="stat-grid" id="overview-stats"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Variable Groups</div>
+          <div id="group-summary"></div>
+        </div>
+      </div>
+
+      <!-- ── Explore ── -->
+      <div id="tab-explore" class="tab-panel">
+        <div id="explore-prompt" style="text-align:center;padding:60px;color:var(--muted)">
+          ← Select a variable from the sidebar to explore its distribution.
+        </div>
+        <div id="var-detail">
+          <div class="card">
+            <div class="card-title" id="detail-title">Variable</div>
+            <div class="var-meta" id="detail-meta"></div>
+            <div class="stats-mini" id="detail-stats"></div>
+            <div class="chart-type-btns" id="chart-type-btns"></div>
+            <div class="chart-area"><canvas id="main-chart"></canvas></div>
+          </div>
+          <div class="card" id="enum-card" style="display:none">
+            <div class="card-title">Code Reference</div>
+            <div class="enum-legend" id="enum-legend"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Missingness ── -->
+      <div id="tab-missingness" class="tab-panel">
+        <div class="card">
+          <div class="card-title">Missingness by Variable</div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+            Percentage of records with null values (999/9999 sentinel values shown separately).
+          </p>
+          <div class="miss-chart-area"><canvas id="miss-chart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- ── Stratified ── -->
+      <div id="tab-stratified" class="tab-panel">
+        <div class="card">
+          <div class="card-title">Stratified Comparison</div>
+          <div class="strat-controls">
+            <div class="form-group">
+              <label>Stratify by (group variable)</label>
+              <select class="form-select" id="strat-by"></select>
+            </div>
+            <div class="form-group">
+              <label>Target variable</label>
+              <select class="form-select" id="strat-target"></select>
+            </div>
+            <button class="btn-primary" onclick="Agg.renderStratified()">Compare</button>
+          </div>
+          <div id="strat-charts-area"></div>
+        </div>
+      </div>
+
+      <!-- ── Descriptive ── -->
+      <div id="tab-table1" class="tab-panel">
+        <div class="card">
+          <div class="card-title">Descriptive Statistics
+            <span class="badge" id="t1-n-badge">n=0</span>
+          </div>
+          <div class="stats-legend">
+            <span class="stats-legend-item">
+              <span class="stats-legend-dot" style="background:var(--navy)"></span>
+              <strong>Continuous (numeric / integer):</strong> mean (SD)
+            </span>
+            <span class="stats-legend-sep">·</span>
+            <span class="stats-legend-item">
+              <span class="stats-legend-dot" style="background:var(--purple-mid)"></span>
+              <strong>Categorical / binary:</strong> n (%) for top categories
+            </span>
+            <span class="stats-legend-sep">·</span>
+            <span class="stats-legend-item">
+              <span class="stats-legend-dot" style="background:var(--warn)"></span>
+              <strong>Null:</strong> genuinely missing
+            </span>
+            <span class="stats-legend-sep">·</span>
+            <span class="stats-legend-item">
+              <span class="stats-legend-dot" style="background:#c0a000"></span>
+              <strong>NA sentinel (999/9999):</strong> not applicable by design
+            </span>
+          </div>
+          <div class="table1-controls">
+            <div class="form-group">
+              <label>Stratify by</label>
+              <select class="form-select" id="t1-strat-by">
+                <option value="">None (whole cohort)</option>
+              </select>
+            </div>
+            <button class="btn-primary" onclick="Agg.renderTable1()">Generate</button>
+            <button class="btn-secondary" onclick="Agg.exportTable1CSV()">Export CSV</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="t1-table" id="t1-table">
+              <thead>
+                <tr>
+                  <th>Variable</th>
+                  <th>Type</th>
+                  <th id="t1-col-all">Whole Cohort</th>
+                  <th style="display:none" id="t1-col-s1">—</th>
+                  <th style="display:none" id="t1-col-s2">—</th>
+                  <th>Null (%)</th>
+                  <th>NA Sentinel (%)</th>
+                </tr>
+              </thead>
+              <tbody id="t1-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+// ── State ─────────────────────────────────────────────────────────────────
+let AGG        = null;   // full aggregated JSON
+let activeVar  = null;
+let chartMode  = 'histogram';
+let activeGroup = 'all';
+let mainChart  = null;
+let missChart  = null;
+
+const $ = id => document.getElementById(id);
+const PALETTE = ['#6B58A0','#B9E05D','#A599C7','#d46c00','#3a3358','#3d8b5c','#c0392b','#4f3f7a'];
+
+function fmt(n, dec=1) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return Number(n).toFixed(dec);
+}
+function pct(n, total) { return total ? ((n / total) * 100).toFixed(1) + '%' : '—'; }
+function suppLabel() { return `&lt;${AGG?.meta?.min_cell ?? 5}`; }
+
+function toast(msg, ms=2500) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, ms);
+}
+
+function typeClass(t) { return `type-${t}`; }
+
+// ── Data loading ───────────────────────────────────────────────────────────
+const AGG_FILE = 'aggregated_data.json';
+
+// Auto-fetch from the server; falls back to the drop zone if it fails.
+function autoFetch() {
+  $('fetch-status').style.display = '';
+  $('fallback-dz').style.display  = 'none';
+  $('fetch-spinner').textContent  = '⏳';
+  $('fetch-msg').textContent      = `Loading ${AGG_FILE}…`;
+
+  fetch(AGG_FILE + '?_=' + Date.now())   // cache-bust so refresh always gets latest
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
+    .then(data => {
+      if (!data.whole_cohort || !data.schema) throw new Error('Not a valid aggregated data file.');
+      AGG = data;
+      $('fetch-status').style.display = 'none';
+      $('btn-refresh').style.display  = '';
+      initApp();
+    })
+    .catch(err => {
+      $('fetch-spinner').textContent = '⚠️';
+      $('fetch-msg').textContent     = `Could not auto-load ${AGG_FILE}: ${err.message}`;
+      $('fetch-status').style.display = '';
+      $('fallback-dz').style.display  = '';
+      setupDrop();
+    });
+}
+
+// Refresh: re-fetch the file and re-initialise (charts, etc.)
+function refreshData() {
+  $('btn-refresh').textContent = '↺ Refreshing…';
+  fetch(AGG_FILE + '?_=' + Date.now())
+    .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+    .then(data => {
+      if (!data.whole_cohort || !data.schema) throw new Error('Not a valid aggregated data file.');
+      AGG = data;
+      // Destroy existing charts before re-init
+      if (mainChart) { mainChart.destroy(); mainChart = null; }
+      if (missChart) { missChart.destroy(); missChart = null; }
+      activeVar = null;
+      initApp();
+      $('btn-refresh').textContent = '↺ Refresh Data';
+      toast('✓ Data refreshed');
+    })
+    .catch(err => {
+      $('btn-refresh').textContent = '↺ Refresh Data';
+      toast('Refresh failed: ' + err.message, 4000);
+    });
+}
+
+// Fallback drop zone (used only when auto-fetch fails)
+function setupDrop() {
+  const dz = $('dz-agg');
+  const fi = $('agg-input');
+  if (!dz || !fi) return;
+  dz.addEventListener('click', () => fi.click());
+  fi.addEventListener('change', e => { if (e.target.files[0]) loadAggFile(e.target.files[0]); });
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) loadAggFile(e.dataTransfer.files[0]);
+  });
+}
+
+function loadAggFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.whole_cohort || !data.schema) throw new Error('Not a valid aggregated data file.');
+      AGG = data;
+      $('fallback-dz').style.display = 'none';
+      $('btn-refresh').style.display = '';
+      initApp();
+    } catch (err) { alert('Failed to load file: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+function initApp() {
+  $('load-screen').classList.remove('active');
+  $('sidebar').style.display = 'flex';
+  $('nav-tabs').style.display = 'flex';
+  $('cohort-badge').style.display = 'flex';
+  $('total-n-badge').textContent = AGG.meta.n.toLocaleString();
+
+  // Build group filter buttons
+  activeGroup = 'all';
+  const gf = $('group-filter');
+  gf.innerHTML = '<button class="gf-btn active" data-group="all">All</button>';
+  const usedGroups = [...new Set(
+    Object.values(AGG.schema).map(s => s.group).filter(g => g && g !== 'id')
+  )];
+  usedGroups.forEach(g => {
+    const lbl = (AGG.group_labels && AGG.group_labels[g]) || g;
+    const btn = document.createElement('button');
+    btn.className = 'gf-btn';
+    btn.dataset.group = g;
+    btn.textContent = lbl;
+    gf.appendChild(btn);
+  });
+
+  // Populate selects
+  populateStratSelects();
+
+  renderVarList();
+  renderIntro();
+  showTab('intro');
+  renderOverview();
+  renderMissingness();
+
+  toast(`✓ Loaded aggregated data · n=${AGG.meta.n.toLocaleString()} · ${AGG.meta.n_variables} variables`);
+}
+
+// ── Introduction tab ──────────────────────────────────────────────────────
+function renderIntro() {
+  const m = AGG.meta;
+  const created = m.created
+    ? new Date(m.created).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
+    : '—';
+
+  // Update suppression threshold in the privacy note
+  const mc = $('intro-mincell');
+  if (mc) mc.textContent = m.min_cell ?? 5;
+
+  $('intro-meta').innerHTML = `
+    <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:800;color:var(--purple);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px">Source file</div>
+      <div style="font-size:13px;color:var(--text)">${m.source_file || '—'}</div>
+    </div>
+    <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:800;color:var(--purple);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px">Last updated</div>
+      <div style="font-size:13px;color:var(--text)">${created}</div>
+    </div>
+    <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:800;color:var(--purple);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px">Participants</div>
+      <div style="font-size:13px;color:var(--text)">${m.n.toLocaleString()}</div>
+    </div>
+    <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:800;color:var(--purple);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px">Variables</div>
+      <div style="font-size:13px;color:var(--text)">${m.n_variables}</div>
+    </div>
+    <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:800;color:var(--purple);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px">Suppression threshold</div>
+      <div style="font-size:13px;color:var(--text)">n &lt; ${m.min_cell ?? 5} suppressed</div>
+    </div>
+    <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:800;color:var(--purple);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px">Stratification variables</div>
+      <div style="font-size:13px;color:var(--text)">${(m.strat_variables || []).length} variables</div>
+    </div>
+  `;
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────
+function renderVarList() {
+  const search = $('var-search').value.toLowerCase();
+  const list   = $('var-list');
+  list.innerHTML = '';
+  let shown = 0;
+
+  Object.keys(AGG.schema).forEach(key => {
+    const s = AGG.schema[key];
+    if (!AGG.whole_cohort[key]) return;
+    if (activeGroup !== 'all' && s.group !== activeGroup) return;
+    if (search && !key.toLowerCase().includes(search) && !s.desc.toLowerCase().includes(search)) return;
+    shown++;
+    const item = document.createElement('div');
+    item.className = 'var-item' + (key === activeVar ? ' active' : '');
+    item.innerHTML = `
+      <div style="flex:1;overflow:hidden">
+        <div class="var-name">${key}</div>
+        <div class="var-desc">${s.desc}</div>
+      </div>
+      <span class="var-type-pill ${typeClass(s.type)}">${s.type}</span>`;
+    item.addEventListener('click', () => selectVar(key));
+    list.appendChild(item);
+  });
+  $('var-count-badge').textContent = `(${shown})`;
+}
+
+function selectVar(key) {
+  activeVar = key;
+  renderVarList();
+  showTab('explore');
+  renderVarDetail(key);
+}
+
+// ── Tab navigation ────────────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.nav-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const panel = $('tab-' + name) || $('load-screen');
+  if (panel) panel.classList.add('active');
+}
+
+// ── Overview ──────────────────────────────────────────────────────────────
+function renderOverview() {
+  const n     = AGG.meta.n;
+  const nVars = AGG.meta.n_variables;
+  const wc    = AGG.whole_cohort;
+
+  // Compute overall completeness from null counts
+  let totalCells = 0, totalNull = 0;
+  Object.entries(wc).forEach(([, stats]) => {
+    totalCells += stats.n_total || 0;
+    totalNull  += stats.n_null  || 0;
+  });
+  const completeness = totalCells ? ((1 - totalNull / totalCells) * 100).toFixed(1) : '—';
+
+  $('overview-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-value">${n.toLocaleString()}</div><div class="stat-label">Participants</div></div>
+    <div class="stat-card"><div class="stat-value">${nVars}</div><div class="stat-label">Variables</div></div>
+    <div class="stat-card"><div class="stat-value">${completeness}%</div><div class="stat-label">Completeness</div></div>
+    <div class="stat-card"><div class="stat-value">${AGG.meta.strat_variables.length}</div><div class="stat-label">Strat. Variables</div></div>
+  `;
+
+  const groups = {};
+  Object.entries(AGG.schema).forEach(([k, s]) => {
+    if (!wc[k]) return;
+    groups[s.group] = groups[s.group] || [];
+    groups[s.group].push(k);
+  });
+
+  const gl = AGG.group_labels || {};
+  $('group-summary').innerHTML = Object.entries(groups).map(([g, ks]) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="font-weight:700;color:var(--navy);min-width:160px">${gl[g] || g}</span>
+      <span style="color:var(--muted);font-size:12px">${ks.length} variables</span>
+      <span style="font-size:11px;color:var(--muted)">${ks.slice(0,5).join(', ')}${ks.length > 5 ? '…' : ''}</span>
+    </div>`).join('');
+}
+
+// ── Variable detail (Explore) ─────────────────────────────────────────────
+function renderVarDetail(key) {
+  const s    = AGG.schema[key];
+  const stats = AGG.whole_cohort[key];
+  if (!s || !stats) return;
+
+  $('explore-prompt').style.display = 'none';
+  $('var-detail').style.display     = 'block';
+  $('detail-title').innerHTML = `${key} <span class="badge">${s.group}</span> <span style="font-size:12px;font-weight:400;color:var(--muted)">${s.unit || ''}</span>`;
+
+  $('detail-meta').innerHTML = `
+    <div class="var-meta-row"><span class="meta-label">Description</span><span class="meta-val">${s.desc}</span></div>
+    <div class="var-meta-row"><span class="meta-label">Type</span><span class="meta-val"><span class="var-type-pill ${typeClass(s.type)}">${s.type}</span></span></div>
+    ${s.sentinel !== undefined ? `<div class="var-meta-row"><span class="meta-label">Sentinel</span><span class="meta-val">${s.sentinel} = Not Applicable</span></div>` : ''}
+  `;
+
+  // Summary chips
+  const statsEl = $('detail-stats');
+  statsEl.innerHTML = '';
+  function chip(val, label) {
+    const d = document.createElement('div');
+    d.className = 'stats-mini-item';
+    d.innerHTML = `<div class="sv">${val}</div><div class="sl">${label}</div>`;
+    statsEl.appendChild(d);
+  }
+  chip(stats.n_valid.toLocaleString(), 'Valid');
+  chip(pct(stats.n_null, stats.n_total), 'Missing (null)');
+  if (stats.n_sentinel > 0) chip(stats.n_sentinel, `Sentinel (${s.sentinel})`);
+
+  const isNum = s.type === 'numeric' || s.type === 'integer';
+  if (isNum && stats.mean !== undefined) {
+    chip(fmt(stats.mean, 1), 'Mean');
+    chip(fmt(stats.sd, 1), 'SD');
+    chip(fmt(stats.median, 1), 'Median');
+    chip(`${fmt(stats.min, 1)} – ${fmt(stats.max, 1)}`, 'Range');
+  } else if (stats.frequencies) {
+    Object.entries(stats.frequencies).slice(0, 3).forEach(([code, fc]) => {
+      const label = fc.label.length > 12 ? fc.label.slice(0,12)+'…' : fc.label;
+      chip(fc.suppressed ? suppLabel() : fc.count, label);
+    });
+  }
+
+  // Chart buttons
+  const btnContainer = $('chart-type-btns');
+  btnContainer.innerHTML = '';
+  const modes = isNum ? ['histogram', 'boxplot', 'bar'] : ['bar', 'pie'];
+  chartMode = modes[0];
+  modes.forEach(mode => {
+    const b = document.createElement('button');
+    b.className = 'chart-btn' + (chartMode === mode ? ' active' : '');
+    b.textContent = { histogram: 'Histogram', boxplot: 'Box Plot', bar: 'Bar chart', pie: 'Pie chart' }[mode];
+    b.onclick = () => {
+      chartMode = mode;
+      btnContainer.querySelectorAll('.chart-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      drawMainChart(key, stats, s);
+    };
+    btnContainer.appendChild(b);
+  });
+
+  drawMainChart(key, stats, s);
+
+  // Enum legend
+  const enumCard = $('enum-card');
+  if (s.codes) {
+    enumCard.style.display = 'block';
+    $('enum-legend').innerHTML = Object.entries(s.codes)
+      .map(([code, label]) => `<div class="enum-item"><span class="enum-code">${code}</span><span>${label}</span></div>`)
+      .join('');
+  } else {
+    enumCard.style.display = 'none';
+  }
+}
+
+// ── Draw chart from aggregated stats ─────────────────────────────────────
+function drawChart(canvasId, stats, schema_entry, mode, height) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const s   = schema_entry;
+  const isNum = s.type === 'numeric' || s.type === 'integer';
+
+  if (mode === 'histogram' && stats.histogram) {
+    // Filter out suppressed (null) bins — do not expose small counts via tooltip
+    const pairs = stats.histogram.labels
+      .map((lbl, i) => [lbl, stats.histogram.counts[i]])
+      .filter(([, cnt]) => cnt !== null);
+    const histLabels = pairs.map(([lbl]) => lbl);
+    const histCounts = pairs.map(([, cnt]) => cnt);
+    const nSuppBins  = stats.histogram.counts.filter(c => c === null).length;
+    const suppNote   = nSuppBins > 0
+      ? `${nSuppBins} bin${nSuppBins > 1 ? 's' : ''} suppressed (n<${AGG?.meta?.min_cell ?? 5})`
+      : null;
+
+    return new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: histLabels,
+        datasets: [{ label: s.desc, data: histCounts,
+          backgroundColor: '#6B58A088', borderColor: '#6B58A0', borderWidth: 1 }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          ...(suppNote ? { subtitle: { display: true, text: suppNote, color: '#c05621', font: { size: 11 } } } : {})
+        },
+        scales: {
+          x: { title: { display: true, text: s.unit ? `${canvasId === 'main-chart' ? activeVar : ''} (${s.unit})` : '' }, ticks: { maxRotation: 45, font: { size: 9 } } },
+          y: { title: { display: true, text: 'Count' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  if (mode === 'boxplot' && stats.median !== undefined) {
+    return new Chart(ctx, {
+      type: 'boxplot',
+      data: {
+        labels: [s.desc.length > 30 ? s.desc.slice(0,30)+'…' : s.desc],
+        datasets: [{
+          label: canvasId === 'main-chart' ? (activeVar || '') : '',
+          data: [{ min: stats.min, q1: stats.q1, median: stats.median, q3: stats.q3, max: stats.max, mean: stats.mean }],
+          backgroundColor: '#6B58A030', borderColor: '#6B58A0', borderWidth: 2,
+          medianColor: '#B9E05D', meanColor: '#B9E05D',
+          itemRadius: 0,
+        }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { title: { display: true, text: s.unit ? `(${s.unit})` : '' } }
+        }
+      }
+    });
+  }
+
+  if ((mode === 'bar' || mode === 'pie') && stats.frequencies) {
+    let entries = Object.entries(stats.frequencies);
+    const nSuppressed = entries.filter(([, fc]) => fc.suppressed).length;
+
+    // Exclude suppressed entries from chart (can't plot unknown values)
+    entries = entries.filter(([, fc]) => !fc.suppressed);
+
+    // Sort: yes/no first, sentinels last
+    if (s.codes) {
+      entries.sort((a, b) => {
+        const priority = ([code]) => {
+          const lbl = (s.codes[code] || '').toLowerCase();
+          const n = Number(code);
+          if (lbl.startsWith('yes')) return 0;
+          if (lbl.startsWith('no'))  return 1;
+          if (n === 999 || n === 9999) return 9999;
+          return 2 + n;
+        };
+        return priority(a) - priority(b);
+      });
+    }
+
+    const labels = entries.map(([, fc]) => {
+      const l = fc.label;
+      return l.length > 22 ? l.slice(0,22)+'…' : l;
+    });
+    const counts  = entries.map(([, fc]) => fc.count);
+    const bgColors = entries.map((_, i) => PALETTE[i % PALETTE.length] + 'cc');
+    const bdColors = entries.map((_, i) => PALETTE[i % PALETTE.length]);
+
+    const suppNote = nSuppressed > 0
+      ? `${nSuppressed} categor${nSuppressed > 1 ? 'ies' : 'y'} suppressed (n<${AGG?.meta?.min_cell ?? 5})`
+      : null;
+
+    if (mode === 'pie') {
+      const total = counts.reduce((a, b) => a + b, 0);
+      return new Chart(ctx, {
+        type: 'pie',
+        data: { labels, datasets: [{ data: counts, backgroundColor: bgColors, borderColor: bdColors, borderWidth: 2 }] },
+        options: {
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'right', labels: { font: { size: 11 }, padding: 10 } },
+            tooltip: { callbacks: { label: c => ` ${c.label}: ${c.parsed} (${((c.parsed/total)*100).toFixed(1)}%)` } },
+            ...(suppNote ? { subtitle: { display: true, text: suppNote, color: '#c05621', font: { size: 11 } } } : {})
+          }
+        }
+      });
+    } else {
+      return new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [{ label: 'Count', data: counts, backgroundColor: bgColors, borderColor: bdColors, borderWidth: 1 }] },
+        options: {
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            ...(suppNote ? { subtitle: { display: true, text: suppNote, color: '#c05621', font: { size: 11 } } } : {})
+          },
+          scales: {
+            x: { ticks: { maxRotation: 45, font: { size: 10 } } },
+            y: { title: { display: true, text: 'Count' }, beginAtZero: true }
+          }
+        }
+      });
+    }
+  }
+
+  // Numeric bar chart fallback (integer with histogram used as bar)
+  if (mode === 'bar' && stats.histogram) {
+    const pairs2 = stats.histogram.labels
+      .map((lbl, i) => [lbl, stats.histogram.counts[i]])
+      .filter(([, cnt]) => cnt !== null);
+    return new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: pairs2.map(([lbl]) => lbl),
+        datasets: [{ label: 'Count', data: pairs2.map(([, cnt]) => cnt),
+          backgroundColor: '#6B58A088', borderColor: '#6B58A0', borderWidth: 1 }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { maxRotation: 45, font: { size: 9 } } },
+          y: { title: { display: true, text: 'Count' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  return null;
+}
+
+function drawMainChart(key, stats, schema_entry) {
+  if (mainChart) { mainChart.destroy(); mainChart = null; }
+  mainChart = drawChart('main-chart', stats, schema_entry, chartMode);
+}
+
+
+// ── Missingness ───────────────────────────────────────────────────────────
+function renderMissingness() {
+  if (missChart) { missChart.destroy(); missChart = null; }
+  const ctx  = $('miss-chart').getContext('2d');
+  const wc   = AGG.whole_cohort;
+
+  const rows = Object.entries(wc).map(([k, stats]) => ({
+    key: k,
+    nullPct:  stats.n_null     / stats.n_total * 100,
+    sentPct:  stats.n_sentinel / stats.n_total * 100,
+  })).sort((a, b) => b.nullPct - a.nullPct);
+
+  missChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: rows.map(r => r.key),
+      datasets: [
+        { label: 'Missing (null %)', data: rows.map(r => r.nullPct),    backgroundColor: '#6B58A0cc', borderWidth: 0 },
+        { label: 'Sentinel NA (%)',  data: rows.map(r => r.sentPct), backgroundColor: '#B9E05Daa', borderWidth: 0 },
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { stacked: true, max: 100, title: { display: true, text: '% of records' } },
+        y: { stacked: true, ticks: { font: { size: 10 } } }
+      },
+      maintainAspectRatio: false,
+    }
+  });
+}
+
+// ── Stratified tab ────────────────────────────────────────────────────────
+function populateStratSelects() {
+  const stratVars = AGG.meta.strat_variables || [];
+  const catVars   = stratVars.filter(k => AGG.schema[k]);
+  const numVars   = Object.keys(AGG.schema).filter(k => {
+    const s = AGG.schema[k]; return s.type === 'numeric' || s.type === 'integer';
+  });
+  const allCatVars = Object.keys(AGG.schema).filter(k => {
+    const s = AGG.schema[k]; return (s.type === 'categorical' || s.type === 'binary') && s.codes;
+  });
+
+  const catOpts    = catVars.map(k => `<option value="${k}">${k}</option>`).join('');
+  const numOpts    = numVars.map(k => `<option value="${k}">${k}</option>`).join('');
+  const allCatOpts = allCatVars.map(k => `<option value="${k}">${k}</option>`).join('');
+
+  $('strat-by').innerHTML     = catOpts;
+  $('strat-target').innerHTML = numOpts;
+  $('t1-strat-by').innerHTML  = '<option value="">None (whole cohort)</option>' + allCatOpts;
+
+}
+
+function renderStratified() {
+  const byKey  = $('strat-by').value;
+  const tgtKey = $('strat-target').value;
+  if (!byKey || !tgtKey) return;
+
+  const stratData  = AGG.strata[byKey];
+  const tgtSchema  = AGG.schema[tgtKey];
+  if (!stratData || !tgtSchema) return;
+
+  const area = $('strat-charts-area');
+  area.innerHTML = '';
+
+  // Destroy old charts
+  Object.entries(Chart.instances || {}).forEach(([id, c]) => {
+    if (id.startsWith('sc-')) c.destroy();
+  });
+
+  Object.entries(stratData).slice(0, 8).forEach(([gk, grp], idx) => {
+    if (grp.suppressed) {
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.innerHTML = `<div class="card-title" style="color:var(--muted)">${byKey} = ${grp.label}</div>
+        <div style="font-size:12px;color:var(--warn)">Suppressed — stratum n${suppLabel()}</div>`;
+      area.appendChild(div);
+      return;
+    }
+    const varStats = grp.variables[tgtKey];
+    if (!varStats) return;
+
+    const isNum = tgtSchema.type === 'numeric' || tgtSchema.type === 'integer';
+    const summary = isNum && varStats.mean !== undefined
+      ? `Mean ${fmt(varStats.mean)} (SD ${fmt(varStats.sd)}) | Median ${fmt(varStats.median)} | Range ${fmt(varStats.min)}–${fmt(varStats.max)}`
+      : varStats.frequencies
+        ? Object.entries(varStats.frequencies).filter(([,fc]) => !fc.suppressed).slice(0, 3).map(([, fc]) => `${fc.label}: ${fc.count}`).join(' | ')
+        : '';
+
+    const canvasId = `sc-${idx}`;
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `
+      <div class="card-title" style="color:${PALETTE[idx%PALETTE.length]}">${byKey} = ${grp.label}
+        <span class="badge" style="background:${PALETTE[idx%PALETTE.length]}">${grp.n.toLocaleString()}</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${summary}</div>
+      <div style="position:relative;height:180px"><canvas id="${canvasId}"></canvas></div>`;
+    area.appendChild(div);
+
+    requestAnimationFrame(() => {
+      const mode = isNum ? 'histogram' : 'bar';
+      drawChart(canvasId, varStats, tgtSchema, mode);
+    });
+  });
+}
+
+// ── Table 1 ───────────────────────────────────────────────────────────────
+function renderTable1() {
+  const stratKey = $('t1-strat-by').value;
+  const n = AGG.meta.n;
+  $('t1-n-badge').textContent = `n=${n.toLocaleString()}`;
+  $('t1-col-all').textContent = `All (n=${n.toLocaleString()})`;
+
+  const s1col = $('t1-col-s1'), s2col = $('t1-col-s2');
+  s1col.style.display = 'none'; s2col.style.display = 'none';
+
+  let stratGroups = null;
+  if (stratKey && AGG.strata[stratKey]) {
+    stratGroups = Object.entries(AGG.strata[stratKey]).sort();
+    if (stratGroups.length >= 1) { s1col.textContent = `${stratGroups[0][1].label} (n=${stratGroups[0][1].n.toLocaleString()})`; s1col.style.display = ''; }
+    if (stratGroups.length >= 2) { s2col.textContent = `${stratGroups[1][1].label} (n=${stratGroups[1][1].n.toLocaleString()})`; s2col.style.display = ''; }
+  }
+
+  function cellSummary(key, statsObj) {
+    if (!statsObj) return '—';
+    if (statsObj.suppressed) return `<span style="color:var(--warn);font-size:11px">suppressed (n${suppLabel()})</span>`;
+    const s = AGG.schema[key];
+    if (s.type === 'numeric' || s.type === 'integer') {
+      return statsObj.mean !== undefined ? `${fmt(statsObj.mean, 1)} (${fmt(statsObj.sd, 1)})` : '—';
+    } else if (statsObj.frequencies) {
+      return Object.entries(statsObj.frequencies).slice(0, 3)
+        .map(([, fc]) => {
+          const lbl = fc.label.length > 14 ? fc.label.slice(0,14)+'…' : fc.label;
+          const cnt = fc.suppressed ? suppLabel() : fc.count;
+          const pctStr = fc.suppressed ? '' : ` (${pct(fc.count, statsObj.n_total)})`;
+          return `${lbl}: ${cnt}${pctStr}`;
+        }).join('<br>');
+    }
+    return '—';
+  }
+
+  const tbody = $('t1-body');
+  tbody.innerHTML = '';
+
+  Object.entries(AGG.whole_cohort).forEach(([key, stats]) => {
+    const s = AGG.schema[key];
+    if (!s) return;
+    const sentVal = s.sentinel;
+    const sentLabel = sentVal != null
+      ? `<span class="t1-missing" title="${sentVal}=NA">${pct(stats.n_sentinel, stats.n_total)}</span>
+         <span style="font-size:10px;color:var(--muted);display:block">(${sentVal}=NA)</span>`
+      : '<span style="color:var(--border)">—</span>';
+
+    let stratCells = '';
+    if (stratGroups) {
+      const g0stats = stratGroups[0] ? stratGroups[0][1].variables[key] : null;
+      const g1stats = stratGroups[1] ? stratGroups[1][1].variables[key] : null;
+      stratCells = `<td>${cellSummary(key, g0stats)}</td><td>${stratGroups[1] ? cellSummary(key, g1stats) : ''}</td>`;
+    } else {
+      stratCells = '<td style="display:none"></td><td style="display:none"></td>';
+    }
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${key}</strong><br><span class="t1-type">${s.desc.slice(0,50)}${s.desc.length>50?'…':''}</span></td>
+      <td><span class="var-type-pill ${typeClass(s.type)}">${s.type}</span></td>
+      <td>${cellSummary(key, stats)}</td>
+      ${stratCells}
+      <td><span class="t1-missing">${pct(stats.n_null, stats.n_total)}</span></td>
+      <td>${sentLabel}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function exportTable1CSV() {
+  const rows = [['Variable','Type','Summary','Null (%)','NA Sentinel (%)','Sentinel value']];
+  Object.entries(AGG.whole_cohort).forEach(([key, stats]) => {
+    const s = AGG.schema[key];
+    if (!s) return;
+    let summary = '';
+    if (s.type === 'numeric' || s.type === 'integer') {
+      summary = stats.mean !== undefined ? `${fmt(stats.mean,1)} (SD ${fmt(stats.sd,1)})` : '';
+    } else if (stats.frequencies) {
+      summary = Object.entries(stats.frequencies).slice(0,3).map(([code,fc]) => `${code}:${fc.count}`).join('; ');
+    }
+    const nullPct = pct(stats.n_null, stats.n_total);
+    const sentPct = pct(stats.n_sentinel, stats.n_total);
+    const sentVal = s.sentinel != null ? String(s.sentinel) : '';
+    rows.push([key, s.type, summary, nullPct, sentPct, sentVal]);
+  });
+  const csv  = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a'); a.href=url; a.download='table1_aggregated.csv'; a.click();
+  URL.revokeObjectURL(url);
+  toast('Table 1 exported as CSV.');
+}
+
+// ── Public API ────────────────────────────────────────────────────────────
+window.Agg = { refreshData, renderStratified, renderTable1, exportTable1CSV };
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  autoFetch();
+
+  document.querySelectorAll('.nav-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const name = tab.dataset.tab;
+      showTab(name);
+      if (name === 'table1')     renderTable1();
+      if (name === 'missingness') renderMissingness();
+    });
+  });
+
+  $('var-search').addEventListener('input', renderVarList);
+
+  $('group-filter').addEventListener('click', e => {
+    const btn = e.target.closest('.gf-btn');
+    if (!btn) return;
+    document.querySelectorAll('.gf-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeGroup = btn.dataset.group;
+    renderVarList();
+  });
+});
+</script>
+</body>
+</html>
