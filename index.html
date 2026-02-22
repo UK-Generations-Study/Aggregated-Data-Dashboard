@@ -357,6 +357,10 @@
 
       /* Tab panels padding */
       .tab-panels { padding: 16px 14px; }
+
+      /* Explore hint */
+      .explore-hint-desktop { display: none; }
+      .explore-hint-mobile  { display: inline; }
     }
 
     /* ── 480 px – Small phones ────────────────────────────────────────── */
@@ -591,7 +595,8 @@
       <!-- ── Explore ── -->
       <div id="tab-explore" class="tab-panel">
         <div id="explore-prompt" style="text-align:center;padding:60px;color:var(--muted)">
-          ← Select a variable from the sidebar to explore its distribution.
+          <span class="explore-hint-desktop">← Select a variable from the sidebar to explore its distribution.</span>
+          <span class="explore-hint-mobile" style="display:none">Tap ☰ to open the variable list, then select a variable.</span>
         </div>
         <div id="var-detail">
           <div class="card">
@@ -920,6 +925,7 @@ function selectVar(key) {
   renderVarList();
   showTab('explore');
   renderVarDetail(key);
+  document.body.classList.remove('sidebar-open');
 }
 
 // ── Tab navigation ────────────────────────────────────────────────────────
